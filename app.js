@@ -347,45 +347,82 @@
     return [(clientX - r.left) / r.width * S, (clientY - r.top) / r.height * S];
   }
 
+  // Mỗi ngón đang chạm: vị trí hiện tại (toạ độ frame) + điểm bắt đầu (px màn hình)
+  // để biết ngón đó có thật sự di chuyển không.
   var pointers = new Map();
-  var gesture = null; // {mid, dist} của lần di chuyển trước
+  var pinching = false;      // đã vào chế độ chụm 2 ngón chưa
+  var PINCH_START_PX = 8;    // cả 2 ngón phải đi quá 8px mới tính là chụm
+  var gestureStartState = null;
 
-  function gestureSnapshot() {
-    var pts = Array.from(pointers.values());
-    if (pts.length === 1) return { mid: pts[0], dist: 0 };
-    var a = pts[0], b = pts[1];
-    return { mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], dist: Math.hypot(a[0] - b[0], a[1] - b[1]) };
+  // Bắt đầu lại cử chỉ: lấy vị trí hiện tại làm mốc cho mọi ngón.
+  function resetGesture() {
+    pinching = false;
+    gestureStartState = st && Object.assign({}, st);
+    pointers.forEach(function (p) { p.sx = p.cx; p.sy = p.cy; p.p0 = p.p.slice(); });
   }
 
   function onPointerDown(e) {
     if (!st) return; // khung trống: sự kiện click bên dưới sẽ mở chọn ảnh
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
+    // Ngón "chính" = không còn ngón nào khác đang chạm -> mọi ngón còn lưu là ngón kẹt
+    // (trình duyệt không báo nhấc tay). Xoá đi để không bị hiểu nhầm thành chụm.
+    if (e.isPrimary) pointers.clear();
     try { el.stage.setPointerCapture(e.pointerId); } catch (_) { /* bỏ qua */ }
-    pointers.set(e.pointerId, toFrame(e.clientX, e.clientY));
-    gesture = gestureSnapshot();
+    pointers.set(e.pointerId, { p: toFrame(e.clientX, e.clientY), cx: e.clientX, cy: e.clientY, sx: 0, sy: 0 });
+    resetGesture();
     el.stage.classList.add('dragging');
   }
 
   function onPointerMove(e) {
-    if (!st || !pointers.has(e.pointerId)) return;
+    var cur = pointers.get(e.pointerId);
+    if (!st || !cur) return;
     e.preventDefault();
-    pointers.set(e.pointerId, toFrame(e.clientX, e.clientY));
-    var now = gestureSnapshot();
-    if (pointers.size >= 2 && gesture.dist > 0 && now.dist > 0) {
-      zoomAt(gesture.mid[0], gesture.mid[1], now.dist / gesture.dist);
+    var prev = cur.p;
+    var ids = Array.from(pointers.keys());
+    var a = pointers.get(ids[0]), b = ids.length > 1 ? pointers.get(ids[1]) : null;
+    var prevMid = b && [(a.p[0] + b.p[0]) / 2, (a.p[1] + b.p[1]) / 2];
+    var prevDist = b && Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1]);
+
+    cur.p = toFrame(e.clientX, e.clientY);
+    cur.cx = e.clientX;
+    cur.cy = e.clientY;
+
+    if (b && !pinching) {
+      // Chỉ chụm khi CẢ HAI ngón cùng di chuyển. Một ngón đứng yên (vd. ngón cái đang
+      // cầm máy chạm vào mép khung) thì vẫn là kéo bằng ngón còn lại.
+      var movedA = Math.hypot(a.cx - a.sx, a.cy - a.sy) > PINCH_START_PX;
+      var movedB = Math.hypot(b.cx - b.sx, b.cy - b.sy) > PINCH_START_PX;
+      pinching = movedA && movedB;
+      if (pinching) {
+        // Vừa xác nhận là chụm: tính lại từ lúc 2 ngón bắt đầu chạm để ảnh bám đúng
+        // theo ngón tay (bỏ phần kéo tạm trong lúc chưa phân biệt được).
+        st = Object.assign({}, gestureStartState);
+        var mid0 = [(a.p0[0] + b.p0[0]) / 2, (a.p0[1] + b.p0[1]) / 2];
+        var dist0 = Math.hypot(a.p0[0] - b.p0[0], a.p0[1] - b.p0[1]);
+        prevMid = mid0;
+        prevDist = dist0;
+      }
     }
-    st.cx += now.mid[0] - gesture.mid[0];
-    st.cy += now.mid[1] - gesture.mid[1];
+
+    if (b && pinching && (e.pointerId === ids[0] || e.pointerId === ids[1])) {
+      var mid = [(a.p[0] + b.p[0]) / 2, (a.p[1] + b.p[1]) / 2];
+      var dist = Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1]);
+      if (prevDist > 0 && dist > 0) zoomAt(prevMid[0], prevMid[1], dist / prevDist);
+      st.cx += mid[0] - prevMid[0];
+      st.cy += mid[1] - prevMid[1];
+    } else {
+      st.cx += cur.p[0] - prev[0];
+      st.cy += cur.p[1] - prev[1];
+    }
     constrain(st);
-    gesture = now;
     requestRender();
   }
 
   function onPointerUp(e) {
     if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
-    gesture = pointers.size ? gestureSnapshot() : null;
+    resetGesture();
     if (!pointers.size) el.stage.classList.remove('dragging');
   }
 
