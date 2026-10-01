@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#12b83a">
+  <title>Thay avatar Hunonic Store</title>
+  <meta name="description" content="Tạo ảnh đại diện với khung Hunonic Store">
+  <meta property="og:title" content="Thay avatar Hunonic Store">
+  <meta property="og:description" content="Tạo ảnh đại diện với khung Hunonic Store">
+  <meta property="og:image" content="assets/frame.png">
+  <link rel="icon" href="assets/frame.png">
+  <link rel="preload" href="assets/frame.png" as="image">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="head">
+      <h1 id="heading">Thay avatar cùng Hunonic Store</h1>
+      <p id="subheading" class="sub"></p>
+    </header>
+
+    <section class="stage-wrap">
+      <div id="stage" class="stage" tabindex="0" aria-label="Khung xem trước. Kéo để di chuyển ảnh, chụm hoặc lăn chuột để phóng to.">
+        <canvas id="preview" class="preview"></canvas>
+        <button id="pickOverlay" class="pick-overlay" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Chọn ảnh</span>
+        </button>
+        <div id="dropHint" class="drop-hint" hidden>Thả ảnh vào đây</div>
+        <div id="loading" class="loading" hidden><span class="spinner"></span></div>
+      </div>
+    </section>
+
+    <section id="controls" class="controls" hidden>
+      <label class="slider">
+        <span class="slider-label">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/></svg>
+          Phóng to
+        </span>
+        <input id="zoom" type="range" min="0" max="1000" value="0" aria-label="Phóng to">
+      </label>
+      <label class="slider">
+        <span class="slider-label">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg>
+          Xoay <output id="rotateValue">0°</output>
+        </span>
+        <input id="rotate" type="range" min="-45" max="45" step="0.5" value="0" aria-label="Xoay ảnh">
+      </label>
+      <div class="tools">
+        <button id="rotLeft" type="button" class="tool" title="Xoay trái 90°">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg><span>Xoay trái</span>
+        </button>
+        <button id="rotRight" type="button" class="tool" title="Xoay phải 90°">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg><span>Xoay phải</span>
+        </button>
+        <button id="flip" type="button" class="tool" title="Lật ngang">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M9 7L4 17h5zM15 7l5 10h-5z"/></svg><span>Lật</span>
+        </button>
+        <button id="reset" type="button" class="tool" title="Đặt lại">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg><span>Đặt lại</span>
+        </button>
+        <button id="change" type="button" class="tool" title="Đổi ảnh khác">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg><span>Đổi ảnh</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="pickBtn" class="btn btn-primary" type="button">Chọn ảnh</button>
+      <button id="downloadBtn" class="btn btn-primary" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        Tải ảnh về
+      </button>
+    </div>
+
+    <ol id="steps" class="steps"></ol>
+
+    <section id="captionBox" class="caption" hidden>
+      <p id="captionText"></p>
+      <button id="copyCaption" class="btn btn-ghost" type="button">Sao chép caption</button>
+    </section>
+
+    <footer id="footer" class="foot"></footer>
+
+    <input id="file" type="file" accept="image/*" hidden>
+  </main>
+
+  <!-- Hộp kết quả: dùng khi trình duyệt không tải file được (Zalo, Facebook...) -->
+  <div id="resultModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <div class="modal-card">
+      <h2 id="resultTitle">Ảnh của bạn đã sẵn sàng</h2>
+      <img id="resultImg" alt="Ảnh avatar đã ghép khung">
+      <p id="resultHint" class="hint"></p>
+      <div class="modal-actions">
+        <button id="resultDownload" class="btn btn-primary" type="button">Tải ảnh về</button>
+        <button id="resultClose" class="btn btn-ghost" type="button">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
