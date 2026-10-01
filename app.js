@@ -225,12 +225,26 @@
   }
 
   // ---------------------------------------------------------------- Frame
-  function loadFrame() {
+  function loadImage(url) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
       img.onload = function () { resolve(img); };
       img.onerror = function () { reject(new Error('frame')); };
-      img.src = CFG.frameSrc;
+      img.src = url;
+    });
+  }
+
+  // Luôn hỏi lại máy chủ (cache: 'no-cache') để đổi frame là người dùng thấy ngay,
+  // không bị trình duyệt giữ bản cũ. Frame không đổi thì máy chủ trả 304, không tải lại.
+  function loadFrame() {
+    if (!window.fetch) return loadImage(CFG.frameSrc);
+    return fetch(CFG.frameSrc, { cache: 'no-cache' }).then(function (res) {
+      if (!res.ok) throw new Error('frame');
+      return res.blob();
+    }).then(function (blob) {
+      return loadImage(URL.createObjectURL(blob));
+    }).catch(function () {
+      return loadImage(CFG.frameSrc);
     });
   }
 
