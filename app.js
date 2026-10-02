@@ -43,7 +43,8 @@
     footer: $('footer'), modal: $('resultModal'), resultImg: $('resultImg'),
     resultHint: $('resultHint'), resultDownload: $('resultDownload'),
     resultClose: $('resultClose'), toast: $('toast'), heading: $('heading'),
-    subheading: $('subheading'),
+    subheading: $('subheading'), resultOpen: $('resultOpen'), inAppBanner: $('inAppBanner'),
+    inAppText: $('inAppText'), inAppOpen: $('inAppOpen'), inAppCopy: $('inAppCopy'), inAppTip: $('inAppTip'),
   };
   var pctx = el.preview.getContext('2d');
 
@@ -204,6 +205,7 @@
   }
 
   function requestRender() {
+    markEdited();
     if (renderQueued) return;
     renderQueued = true;
     requestAnimationFrame(function () {
@@ -479,9 +481,51 @@
 
   var ua = navigator.userAgent || '';
   var IS_IOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  var IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram|Zalo|Line\/|MicroMessenger|TikTok|musical_ly/i.test(ua);
+  var IS_ANDROID = /Android/i.test(ua);
+  var IN_APP_NAME = /Zalo/i.test(ua) ? 'Zalo'
+    : /Messenger|Orca-Android/i.test(ua) ? 'Messenger'
+    : /FBAN|FBAV|FB_IAB|FBIOS|FB4A/i.test(ua) ? 'Facebook'
+    : /Instagram/i.test(ua) ? 'Instagram'
+    : /TikTok|musical_ly|BytedanceWebview/i.test(ua) ? 'TikTok'
+    : /Line\//i.test(ua) ? 'Line'
+    : /MicroMessenger/i.test(ua) ? 'WeChat'
+    : '';
+  var IN_APP = !!IN_APP_NAME;
 
-  var lastBlob = null;
+  // Ảnh HD được tạo sẵn ngầm sau mỗi lần chỉnh. Nhờ vậy khi bấm "Tải ảnh HD" có thể gọi
+  // ngay bảng chia sẻ của iPhone (iPhone chỉ cho mở bảng này NGAY trong lúc bấm nút).
+  var editVersion = 0;
+  var ready = null;          // {version, blob, file}
+  var prepareTimer = 0;
+  var preparing = null;      // Promise đang tạo ảnh
+
+  function markEdited() {
+    editVersion++;
+    clearTimeout(prepareTimer);
+    if (st) prepareTimer = setTimeout(prepareExport, 400);
+  }
+
+  function prepareExport() {
+    if (!st) return Promise.reject(new Error('empty'));
+    if (ready && ready.version === editVersion) return Promise.resolve(ready);
+    var v = editVersion;
+    preparing = exportBlob().then(function (blob) {
+      var item = { version: v, blob: blob, file: toFile(blob) };
+      if (v === editVersion) ready = item;
+      return item;
+    });
+    preparing.catch(function () { /* báo lỗi khi người dùng bấm tải */ });
+    return preparing;
+  }
+
+  function toFile(blob) {
+    try { return new File([blob], CFG.downloadFileName, { type: 'image/png' }); } catch (_) { return null; }
+  }
+
+  function canShareFile(file) {
+    try { return !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })); }
+    catch (_) { return false; }
+  }
 
   function triggerDownload(blob) {
     var url = URL.createObjectURL(blob);
@@ -503,30 +547,83 @@
     });
   }
 
+  // Mở bảng chia sẻ chỉ với file ảnh (không kèm chữ/link, nếu kèm iPhone sẽ ẩn mục "Lưu hình ảnh").
+  function shareFile(item) {
+    return navigator.share({ files: [item.file] }).then(function () {
+      toast('Đã lưu ảnh HD ' + S + '×' + S);
+      el.modal.hidden = true;
+    }, function (err) {
+      if (err && err.name === 'AbortError') return; // người dùng tự đóng bảng chia sẻ
+      // Trình duyệt không cho mở (vd. tạo ảnh lâu quá) -> hiện nút để bấm lại.
+      showSaveModal(item, false);
+    });
+  }
+
+  // Lưu ảnh theo cách tốt nhất của từng máy. Phải được gọi ngay trong lúc bấm nút.
+  function deliver(item) {
+    if (IS_IOS && canShareFile(item.file)) return shareFile(item);          // iPhone: "Lưu hình ảnh" -> app Ảnh
+    if (IN_APP) {
+      if (canShareFile(item.file)) return shareFile(item);
+      return showSaveModal(item, true);                                     // Zalo/Facebook chặn tải
+    }
+    triggerDownload(item.blob);                                             // Android, máy tính
+    toast('Đã tải ảnh HD ' + S + '×' + S + ' về máy');
+  }
+
+  function showSaveModal(item, inApp) {
+    blobToDataURL(item.blob).then(function (dataUrl) {
+      el.resultImg.src = dataUrl;
+      el.resultOpen.hidden = !inApp;
+      el.resultDownload.hidden = inApp && !canShareFile(item.file);
+      el.resultHint.textContent = inApp
+        ? IN_APP_NAME + ' không cho tải ảnh. Bấm “' + el.resultOpen.textContent + '” rồi tải lại (ảnh sẽ nét HD), hoặc nhấn giữ vào ảnh để lưu.'
+        : 'Bấm “Lưu ảnh vào máy” để lưu ảnh HD.';
+      el.modal.hidden = false;
+    });
+  }
+
   function onDownload() {
     if (!st) return;
+    if (ready && ready.version === editVersion) { deliver(ready); return; }
     el.downloadBtn.disabled = true;
-    exportBlob().then(function (blob) {
-      lastBlob = blob;
-      if (IN_APP || IS_IOS) {
-        // Zalo/Facebook chặn tải file; iPhone tải file sẽ vào app Tệp thay vì Ảnh.
-        // -> hiện ảnh để người dùng nhấn giữ và "Lưu vào Ảnh".
-        return blobToDataURL(blob).then(function (dataUrl) {
-          el.resultImg.src = dataUrl;
-          el.resultHint.textContent = IS_IOS
-            ? 'Nhấn giữ vào ảnh → chọn “Lưu vào Ảnh”.'
-            : 'Nhấn giữ vào ảnh → chọn “Tải ảnh xuống” / “Lưu ảnh”.';
-          el.resultDownload.hidden = IN_APP;
-          el.modal.hidden = false;
-        });
-      }
-      triggerDownload(blob);
-      toast('Đã tải ảnh về máy');
+    prepareExport().then(function (item) {
+      deliver(item);
     }).catch(function () {
       toast('Có lỗi khi tạo ảnh. Hãy tải lại trang và thử lại.');
     }).then(function () {
       el.downloadBtn.disabled = false;
     });
+  }
+
+  function onModalSave() {
+    if (!ready) return;
+    if (canShareFile(ready.file)) shareFile(ready);
+    else { triggerDownload(ready.blob); toast('Đã tải ảnh HD ' + S + '×' + S + ' về máy'); }
+  }
+
+  // Link mở trang hiện tại bằng trình duyệt thật (Chrome trên Android, Safari trên iPhone).
+  function externalBrowserUrl() {
+    var here = location.href.split('#')[0];
+    if (IS_ANDROID) {
+      return 'intent://' + here.replace(/^https?:\/\//, '') + '#Intent;scheme=' + location.protocol.replace(':', '') +
+        ';package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(here) + ';end';
+    }
+    if (IS_IOS) return here.replace(/^https:\/\//, 'x-safari-https://').replace(/^http:\/\//, 'x-safari-http://');
+    return here;
+  }
+
+  function setupInAppBanner() {
+    if (!IN_APP) return;
+    var browser = IS_IOS ? 'Safari' : 'Chrome';
+    el.inAppText.textContent = 'Bạn đang mở trong ' + IN_APP_NAME + ', ứng dụng này không cho tải ảnh. ' +
+      'Hãy mở bằng ' + browser + ' để tải ảnh HD chỉ với 1 nút bấm.';
+    el.inAppOpen.textContent = 'Mở bằng ' + browser;
+    el.inAppOpen.href = externalBrowserUrl();
+    el.inAppTip.textContent = IS_IOS
+      ? 'Không mở được? Bấm dấu ••• hoặc biểu tượng la bàn ở góc màn hình → “Mở bằng Safari”.'
+      : 'Không mở được? Bấm dấu ⋮ ở góc trên → “Mở bằng trình duyệt”.';
+    el.inAppBanner.hidden = false;
+    el.resultOpen.textContent = 'Mở bằng ' + browser;
   }
 
   // ---------------------------------------------------------------- Tiện ích
@@ -611,7 +708,12 @@
 
     el.resultClose.addEventListener('click', function () { el.modal.hidden = true; });
     el.modal.addEventListener('click', function (e) { if (e.target === el.modal) el.modal.hidden = true; });
-    el.resultDownload.addEventListener('click', function () { if (lastBlob) triggerDownload(lastBlob); });
+    el.resultDownload.addEventListener('click', onModalSave);
+    el.resultOpen.addEventListener('click', function () { location.href = externalBrowserUrl(); });
+    el.inAppCopy.addEventListener('click', function () {
+      copyText(location.href.split('#')[0]).then(function () { toast('Đã sao chép link, hãy dán vào Chrome/Safari'); },
+        function () { toast('Không sao chép được, hãy sao chép link trên thanh địa chỉ'); });
+    });
     el.copyCaption.addEventListener('click', function () {
       copyText(CFG.caption).then(function () { toast('Đã sao chép caption'); },
         function () { toast('Không sao chép được, hãy nhấn giữ để chọn chữ'); });
@@ -642,6 +744,7 @@
 
   function start() {
     applyConfig();
+    setupInAppBanner();
     el.stage.classList.add('empty');
     bind();
     loadFrame().then(function (img) {
@@ -672,6 +775,7 @@
     getSource: function () { return src && { w: src.w, h: src.h }; },
     frameSize: function () { return S; },
     exportBlob: exportBlob,
+    isReady: function () { return !!(ready && ready.version === editVersion); },
     loadFile: loadFile,
     coverInfo: function () { return coverInfo(thetaOf(st)); },
   };

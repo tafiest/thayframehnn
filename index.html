@@ -14,6 +14,16 @@
 </head>
 <body>
   <main class="app">
+    <!-- Hiện khi mở trong Zalo/Facebook...: các app này chặn tải ảnh -->
+    <section id="inAppBanner" class="inapp" hidden>
+      <p id="inAppText"></p>
+      <div class="inapp-actions">
+        <a id="inAppOpen" class="btn btn-primary" href="#">Mở bằng trình duyệt</a>
+        <button id="inAppCopy" class="btn btn-ghost" type="button">Sao chép link</button>
+      </div>
+      <p id="inAppTip" class="inapp-tip"></p>
+    </section>
+
     <header class="head">
       <h1 id="heading">Thay avatar cùng Hunonic Store</h1>
       <p id="subheading" class="sub"></p>
@@ -69,7 +79,7 @@
       <button id="pickBtn" class="btn btn-primary" type="button">Chọn ảnh</button>
       <button id="downloadBtn" class="btn btn-primary" type="button" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
-        Tải ảnh về
+        Tải ảnh HD
       </button>
     </div>
 
@@ -92,7 +102,8 @@
       <img id="resultImg" alt="Ảnh avatar đã ghép khung">
       <p id="resultHint" class="hint"></p>
       <div class="modal-actions">
-        <button id="resultDownload" class="btn btn-primary" type="button">Tải ảnh về</button>
+        <button id="resultDownload" class="btn btn-primary" type="button">Lưu ảnh vào máy</button>
+        <button id="resultOpen" class="btn btn-primary" type="button" hidden>Mở bằng trình duyệt</button>
         <button id="resultClose" class="btn btn-ghost" type="button">Đóng</button>
       </div>
     </div>

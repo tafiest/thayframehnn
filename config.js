@@ -12,7 +12,7 @@ window.APP_CONFIG = {
   steps: [
     "Bấm “Chọn ảnh” để tải ảnh của bạn lên",
     "Kéo để di chuyển, chụm 2 ngón hoặc dùng thanh trượt để phóng to",
-    "Bấm “Tải ảnh về” rồi đặt làm ảnh đại diện",
+    "Bấm “Tải ảnh HD” để lưu ảnh nét về máy, rồi đặt làm ảnh đại diện",
   ],
 
   // Caption gợi ý để người dùng sao chép khi đăng (để "" nếu không dùng)

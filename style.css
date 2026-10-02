@@ -28,6 +28,19 @@ html, body {
   padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
 }
 
+.inapp {
+  margin: 0 0 14px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: #fff8e1;
+  border: 1.5px solid #f5c542;
+  text-align: center;
+}
+.inapp p { margin: 0 0 10px; font-weight: 600; line-height: 1.4; }
+.inapp-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.inapp-actions .btn { text-decoration: none; min-height: 44px; padding: 10px 18px; font-size: .95rem; }
+.inapp .inapp-tip { margin: 10px 0 0; font-weight: 400; font-size: .85rem; color: var(--muted); }
+
 .head { text-align: center; margin: 4px 0 14px; }
 .head h1 { font-size: 1.35rem; line-height: 1.25; margin: 0; }
 .sub { margin: 6px 0 0; color: var(--muted); font-size: .95rem; }
