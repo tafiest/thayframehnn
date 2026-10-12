@@ -16,7 +16,8 @@ window.APP_CONFIG = {
   ],
 
   // Caption gợi ý để người dùng sao chép khi đăng (để "" nếu không dùng)
-  caption: "Mình đã thay avatar cùng Hunonic Store! #Hunonic #HunonicStore",
+  // Muốn xuống dòng thì gõ \n
+  caption: "🎉 Sẵn sàng bùng nổ cùng chiến dịch HÀNG CHÍNH HÃNG - GIÁ ĐỘC QUYỀN CÙNG HUNONIC STORE!\n#hunonic #hunonicstore #nhathongminh #smarthome",
 
   // Màu chủ đạo của trang
   colors: {
